@@ -24,6 +24,17 @@ Research protocol
 * ( ) Review and document relevant schema elements
 
 
+General Analysis
+================
+
+* Need the minimal reliable test of what shape type is contained in
+  a CT_GraphicalObjectFrame element. I'm thinking it's determined by the first
+  child element that appears in the ``<a:graphic>`` element.
+* I suspect that ``SmartArt`` is a third object type that can be contained in
+  the ``CT_GraphicalObjectFrame`` element, in addition to ``Table`` and
+  ``Chart``.
+
+
 MS API Analysis
 ===============
 
@@ -31,14 +42,72 @@ MS API method to add a chart is::
 
     Shapes.AddChart(Type, Left, Top, Width, Height)
 
-There is a HasChart property on Shape to indicate the shape "has" a chart.
-Seems like "is" a chart would be more apt, but I'm still looking :)
+
+Properties inherited from ``Shape``
+-----------------------------------
+
+* There is a ``HasChart`` property on Shape to indicate the shape "has"
+  a chart. I'm thinking ``isinstance(shape, Chart)`` will serve that purpose
+  for us. The MS ``Shape`` object also has the properties ``Chart`` and
+  ``Table``, such that accessing the chart would look like
+  ``chart = sld.shapes[9].chart`` rather than ``chart = sld.shapes[9]``. I'm
+  not sure why they designed it that way. Best I can think of is they wanted
+  to keep the ``Shape`` API separate from the ``Chart`` and ``Table`` API.
+  Strikes me as a question to keep in mind as the design continues to emerge.
+  I'd hate to discover late there was a better reason than I'm seeing yet :).
+* ``top``, ``left``, ``width``, and ``height`` will be inherited from
+  ``Shape``, or perhaps from a ``GraphicFrame`` subclass, since those elements
+  are shared by both ``Table`` and ``Chart``.
+* There is such a thing as a shape placeholder, and having that capability
+  might be useful because it would allow certain aspects of the chart to be
+  defined in a .pptx template file, such that an end-user could change the size
+  and position of the generated charts by uploading a different template file,
+  no code changes necessary. Probably not super simple to execute, but not more
+  than a medium-sized feature.
+* ``name`` should come for free, inherited from BaseShape. Doesn't show on the
+  PowerPoint UI, but can be handy for debugging and perhaps other purposes.
+
+
+Core ``Chart`` members and properties
+-------------------------------------
 
 From the `Chart Members`_ page on MSDN.
 
-Most interesting ``Chart`` members:
+* ``Axes()`` -- implies an ``Axis`` class. I suppose there can be as many as
+  three, not sure.
+* ``SeriesCollection()`` -- implies a ``Series`` class. That needs a double-click
+  down as these must be a core element.
+* ``SetElement()`` -- no clue yet, but looks important.
+* ``SetSourceData()`` -- set the source data range for the chart. I expect this
+  specifies the Excel sheet range containing the chart data.
+* ``ChartArea`` -- dunno what this is yet
+* ``ChartData`` -- ...
+* ``ChartStyle`` -- ...
+* ``ChartTitle`` -- ...
+* ``ChartType`` -- ...
+* ``DataTable`` -- ...
+* ``Format`` -- returns the ``ChartFormat`` object ...
+* ``HasDataTable`` -- the DataTable object is worth exploring, could be there's
+  an alternative to embedding an Excel spreadsheet.
+* ``Legend`` -- returns the ``Legend`` object for the chart
+* ``PlotArea`` -- not sure what this is
+* ``Shapes`` -- collection of all shapes on the chart. needs looking into
+* ``Title`` -- read/write, title of the chart
 
-...
+
+Not core, but worth exploring for analysis purposes
+---------------------------------------------------
+
+* There are ``ApplyChartTemplate()`` and ``SaveChartTemplate()`` methods, which
+  implies the existence of something called a chart template. Not sure what
+  those are, these two go on the 'investigate further' list.
+* ``ChartGroup()`` -- not sure what this is, hoping it's an advanced feature we
+  don't need though :)
+* ``Delete()`` -- probably can get away without this initially, since there's no
+  need to delete something if you're creating charts from scratch. However, if
+  it's pretty easy, probably good to get it in there while the head's wrapped
+  around the code. Would be required to manipulate an existing slide. Might
+  even be handy if templates are used.
 
 
 XML produced by PowerPoint® application
